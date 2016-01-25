@@ -52,6 +52,9 @@
     [(s-exp-match? '(/ ANY ANY) s)
      (local [(define l (s-exp->list s))]
        (binOp '/ (parse (second l)) (parse (third l))))]
+    [(s-exp-match? '(SYMBOL ANY) s)
+     (local [(define l (s-exp->list s))]
+       (appC (s-exp->symbol (first l)) (parse (second l))))]
     [else (error 'parse "invalid input")]
     )
   )
@@ -73,26 +76,32 @@
 ;; currently only parses a function with one argument
 (define (parse-fundef [s : s-expression]) : FundefC
   [cond
-    ;; one argument parsing for fundefC
-    [(s-exp-match? '(SYMBOL ANY ANY ANY) s)
-     (local [(define l (s-exp->list s))]
-       (func (s-exp->symbol (second l))
-             (s-exp->symbol (third l))
-             (parse (fourth l))))]
-    ;; zero argument parsing for fundefC
-    [(s-exp-match? '(SYMBOL ANY ANY) s)
-     (local [(define l (s-exp->list s))]
-       (func (s-exp->symbol (second l))
-             '_
-             (parse (third l))))]
-    [else (error 'parse-fundef "unimplemented")]])
+    [(s-exp-list? s)
+     [cond
+       ;; one argument parsing for fundefC
+       [(s-exp-match? '(SYMBOL ANY ANY ANY) s)
+        (local [(define l (s-exp->list s))]
+          (func (s-exp->symbol (second l))
+                (s-exp->symbol (third l))
+                (parse (fourth l))))]
+       ;; zero argument parsing for fundefC
+       [(s-exp-match? '(SYMBOL ANY ANY) s)
+        (local [(define l (s-exp->list s))]
+          (func (s-exp->symbol (second l))
+                '_
+                (parse (third l))))]
+       [else (error 'parse-fundef "unimplemented")]]]])
 
 
 
 ;; takes an s-expression and parses it as a list of FundefC
 (define (parse-prog [s : s-expression]) : (listof FundefC)
-  [cond 
+  [cond
+    ;; one arg fundefc
     [(s-exp-match? '(SYMBOL ANY ANY ANY) s) (cons (parse-fundef s) empty)]
+    ;; zero arg fundef
+    [(s-exp-match? '(SYMBOL ANY ANY) s) (cons (parse-fundef s) empty)]
+    ;; more than one function that needs to be parsed 
     [(s-exp-list? s)
        (map parse-fundef (s-exp->list s))]])
 
@@ -175,6 +184,8 @@
       (binOp '* (numC 5) (numC 10)))
 (test (parse '(/ 9 3))
       (binOp '/ (numC 9) (numC 3)))
+(test (parse '(fnA 2))
+      (appC 'fnA (numC 2)))
 
 ;; test cases for parse-fundef
 (test (parse-fundef '(newFn myFn x (+ x 1)))
@@ -230,21 +241,30 @@
               (list (func 'fnA 'var (binOp '+ (idC 'var) (numC 10)))))
       30)
 
-;; test cases for parse-prog
-;;(test (parse-prog '((newFn fnOne x (+ x 5)
-;;                    (newFn fnTwo y (- y 5)))))
-;;      (list (func 'fnOne 'x (binOp '+ (idC 'x) (numC 5)))
-;;            (func 'fnTwo 'y (binOp '- (idC 'y) (numC 5)))))
+;; test cases for parse-prog (two function prg)
+(test (parse-prog '((newFn fnOne x (+ x 5))
+                     (newFn fnTwo y (- y 5))))
+      (list (func 'fnOne 'x (binOp '+ (idC 'x) (numC 5)))
+            (func 'fnTwo 'y (binOp '- (idC 'y) (numC 5)))))
+
+;; test case for parse-prog (one function prg)
+(test (parse-prog '(newFn fnOne x (+ x 5)))
+      (list (func 'fnOne 'x (binOp '+ (idC 'x) (numC 5)))))
+
+;; test case for parse-prog (one function that takes 0 args
+(test (parse-prog '(newFn fnOne (+ 2 2)))
+      (list (func 'fnOne '_ (binOp '+ (numC 2) (numC 2)))))
 
 ;; test cases for interp-fns
 (test (interp-fns (list (func 'f 'x (binOp '+ (idC 'x) (numC 0)))
                         (func 'main 'arg (numC 0))))
       0)
 
-;;(test (interp-fns
-;;       (parse-prog '{{func {f x} {+ x 0}}
-;;                     {func {main} {f 1}}}))
-;;      3)
+;; test cases for interpreting a full program (got from specs, modified a bit)
+(test (interp-fns
+       (parse-prog '((newFn f x (+ x 0))
+                     (newFn main (f 1)))))
+      1)
 
 ;; (test (interp-fns
 ;;        (parse-prog '{{func {f} 5}
