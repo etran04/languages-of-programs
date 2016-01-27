@@ -1,7 +1,7 @@
 #lang plai-typed
 
 ;; Eric Tran
-;; CSC 430 - Lab4
+;; CSC 430 - Lab4 -4eewph
 
 ((lambda (x) (+ x 2))3)
 
@@ -38,7 +38,7 @@
 ;; curry3 takes a function of three arguments, and produces a function that takes one argument
 ;; and produces a function that takes one argument and produces a function that takes one argument
 ;; and produces the result of calling the input function on the three given arguments
-(define (curry3 [func : (number number number -> number)]) : (number -> (number -> (number -> number)))
+(define (curry3 [func : ('a 'b 'c -> 'd)]) : ('a -> ('b -> ('c -> 'd)))
   (lambda (c) (lambda (b) (lambda (a) (func a b c))))
   )
 

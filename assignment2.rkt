@@ -1,6 +1,7 @@
 #lang plai-typed
 
 (require plai-typed/s-exp-match)
+;;(print-only-errors true)
 
 ;; Eric Tran (etran04)
 ;; CSC 430 - Assignment 2
@@ -26,6 +27,18 @@
   [func (name : symbol) (arg : symbol) (body : ExprC)]
   )
 
+
+;; table function for mapping operator names to actual racket procedures
+(define (getOperator [check : symbol]) : (number number -> number)
+  [cond
+    [(equal? check '+) +]
+    [(equal? check '-) -]
+    [(equal? check '*) *]
+    [(equal? check '/) /]
+    [else (error 'getOperator "unimplemented")]
+    ]
+  )
+
 ; takes an s-expression and returns as an ExprC representation
 (define (parse [s : s-expression]) : ExprC
   (cond
@@ -40,34 +53,14 @@
     [(s-exp-match? '(ifleq0 ANY ANY ANY) s)
      (local [(define l (s-exp->list s))]
        (ifleq0 (parse (second l)) (parse (third l)) (parse (fourth l))))]
-    [(s-exp-match? '(+ ANY ANY) s)
+    [(s-exp-match? '(SYMBOL ANY ANY) s)
      (local [(define l (s-exp->list s))]
-       (binOp '+ (parse (second l)) (parse (third l))))]
-    [(s-exp-match? '(- ANY ANY) s)
-     (local [(define l (s-exp->list s))]
-       (binOp '- (parse (second l)) (parse (third l))))]
-    [(s-exp-match? '(* ANY ANY) s)
-     (local [(define l (s-exp->list s))]
-       (binOp '* (parse (second l)) (parse (third l))))]
-    [(s-exp-match? '(/ ANY ANY) s)
-     (local [(define l (s-exp->list s))]
-       (binOp '/ (parse (second l)) (parse (third l))))]
+       (binOp (s-exp->symbol (first l)) (parse (second l)) (parse (third l))))]
     [(s-exp-match? '(SYMBOL ANY) s)
      (local [(define l (s-exp->list s))]
        (appC (s-exp->symbol (first l)) (parse (second l))))]
     [else (error 'parse "invalid input")]
     )
-  )
-
-;; table function for mapping operator names to actual racket procedures
-(define (getOperator [check : symbol]) : (number number -> number)
-  [cond
-    [(equal? check '+) +]
-    [(equal? check '-) -]
-    [(equal? check '*) *]
-    [(equal? check '/) /]
-    [else (error 'getOperator "unimplemented")]
-    ]
   )
 
 ;; --- 2.2 Functions with 0 or more arguments --- ;;
@@ -266,10 +259,11 @@
                      (newFn main (f 1)))))
       1)
 
-;; (test (interp-fns
-;;        (parse-prog '{{func {f} 5}
-;;                      {func {main} {+ {f} {f}}}}))
-;;       10)
+(test (interp-fns
+       (parse-prog '((newFn f (+ 0 5))
+                     (newFn main (f f)))))
+      5)
+
 ;; (test/exn (interp-fns
 ;;            (parse-prog '{{func {f x y} {+ x y}}
 ;;                          {func {main} {f 1}}}))
